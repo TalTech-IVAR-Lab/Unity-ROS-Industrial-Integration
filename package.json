@@ -15,7 +15,10 @@
     "email": "yevhen.bondarenko@taltech.ee",
     "url": "https://gitlab.com/JGroxz"
   },
-  "dependencies": {},
+  "dependencies": {
+    "com.cysharp.unitask": "2.3.1",
+    "io.extendreality.zinnia.unity": "2.0.0"
+  },
   "samples": [],
   "hideInEditor": false
 }
