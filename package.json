@@ -1,6 +1,6 @@
 {
   "name": "ee.taltech.ivar.robotics.ros",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "displayName": "Unity x ROS Integration",
   "description": "Collection of scripts for integrating the digital twins of ROS robots based on ROS TCP Connector and URDF Importer packages from Unity.",
   "unity": "2020.3",
@@ -15,9 +15,7 @@
     "email": "yevhen.bondarenko@taltech.ee",
     "url": "https://gitlab.com/JGroxz"
   },
-  "dependencies": {
-
-  },
+  "dependencies": {},
   "samples": [],
   "hideInEditor": false
 }
