@@ -1,3 +1,11 @@
+### [1.0.2](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/compare/v1.0.1...v1.0.2) (2022-05-01)
+
+
+### 🛠 Fixes
+
+* Rename Runtime assembly ([51b7c99](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/commit/51b7c99cc0f0b359c6b0e431ab2d147c5e341789))
+* Rename Runtime assembly ([a5f4fe7](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/commit/a5f4fe73e6043dc73bb74100f471a62377cbca6f))
+
 ### [1.0.1](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/compare/v1.0.0...v1.0.1) (2022-05-01)
 
 
