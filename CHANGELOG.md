@@ -1,3 +1,15 @@
+### [1.0.1](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/compare/v1.0.0...v1.0.1) (2022-05-01)
+
+
+### ✂ Refactor
+
+* Change default namespace and package name ([f6086e6](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/commit/f6086e696461faac00591aa64d503a9872377d37))
+
+
+### 🛠 Fixes
+
+* Add missing dependencies to package.json ([80241f4](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/commit/80241f4749717f2d8c0c865cbe632c0ae5c19651))
+
 ## [1.0.0](https://gitlab.com/IVAR_Lab/Unity-x-ROS/compare/...v1.0.0) (2022-05-01)
 
 
