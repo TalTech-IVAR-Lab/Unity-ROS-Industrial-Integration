@@ -1,4 +1,4 @@
-namespace EE.TalTech.IVAR.Robotics.ROS
+namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
 {
     using System.Linq;
     using Cysharp.Threading.Tasks;

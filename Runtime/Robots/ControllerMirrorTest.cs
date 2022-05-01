@@ -1,4 +1,4 @@
-namespace EE.TalTech.IVAR.Robotics.ROS
+namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
 {
     using Cysharp.Threading.Tasks;
     using UnityEngine;
