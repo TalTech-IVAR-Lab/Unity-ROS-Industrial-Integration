@@ -193,11 +193,17 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
 
         private void UpdateArticulationBodiesKinematic()
         {
+            // Disable robot's articulation bodies to prevent physical motion
+            foreach (var body in robot.articulationBodies) { body.enabled = false; }
+
+            // Move the robot joints' bodies to the target positions
             for (int i = 0; i < robot.JointsCount; i++)
             {
                 var body = robot.jointArticulationBodies[i];
-                body.enabled = false;
-                if (body.isRoot)
+                var jointTarget = jointTargets[i];
+                var parentBody = body.transform.parent.GetComponentInParent<ArticulationBody>(true);
+
+                if (parentBody == null)
                 {
                     Debug.LogError($"'{body}' joint's articulation body is the root of articulation. This is not allowed for robot joints, as they have to be movable.\n" +
                                    $"Please make sure that robot has a base articulation body which is not a joint. ", this);
@@ -205,9 +211,6 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
                     break;
                 }
 
-                var jointTarget = jointTargets[i];
-                var parentBody = body.transform.parent.GetComponentInParent<ArticulationBody>();
-                
                 switch (body.jointType)
                 {
                     case ArticulationJointType.RevoluteJoint:
