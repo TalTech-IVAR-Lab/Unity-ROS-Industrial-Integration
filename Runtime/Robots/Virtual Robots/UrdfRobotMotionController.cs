@@ -197,9 +197,17 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
             {
                 var body = robot.jointArticulationBodies[i];
                 body.enabled = false;
+                if (body.isRoot)
+                {
+                    Debug.LogError($"'{body}' joint's articulation body is the root of articulation. This is not allowed for robot joints, as they have to be movable.\n" +
+                                   $"Please make sure that robot has a base articulation body which is not a joint. ", this);
+                    this.enabled = false;
+                    break;
+                }
+
                 var jointTarget = jointTargets[i];
                 var parentBody = body.transform.parent.GetComponentInParent<ArticulationBody>();
-
+                
                 switch (body.jointType)
                 {
                     case ArticulationJointType.RevoluteJoint:
