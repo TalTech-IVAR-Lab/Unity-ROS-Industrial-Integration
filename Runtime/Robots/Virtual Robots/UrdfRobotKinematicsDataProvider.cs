@@ -12,11 +12,17 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
     public class UrdfRobotKinematicsDataProvider : MonoBehaviour
     {
         #region Public Variables
-        
+
         /// <summary>
         /// <see cref="UrdfRobot"/> script representing this robot.
         /// </summary>
         public UrdfRobot robot;
+
+        /// <summary>
+        /// List of names of robot's joints as defined in its URDF.
+        /// </summary>
+        [Restricted(RestrictedAttribute.Restrictions.ReadOnlyAlways)]
+        public List<UrdfLink> links;
 
         /// <summary>
         /// List of <see cref="UrdfJoint"/>s of the robot.
@@ -31,16 +37,16 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
         public List<string> jointNames;
 
         /// <summary>
-        /// List of <see cref="ArticulationBody"/> scripts representing movable joints of the robot.
+        /// List of <see cref="ArticulationBody"/> components representing movable joints of the robot.
         /// </summary>
         [Restricted(RestrictedAttribute.Restrictions.ReadOnlyAlways)]
         public List<ArticulationBody> jointArticulationBodies;
 
         /// <summary>
-        /// List of names of robot's joints as defined in its URDF.
+        /// List of all <see cref="ArticulationBody"/> components in the kinematic chain of the robot.
         /// </summary>
         [Restricted(RestrictedAttribute.Restrictions.ReadOnlyAlways)]
-        public List<UrdfLink> links;
+        public List<ArticulationBody> articulationBodies;
 
         /// <summary>
         /// Number of movable joints in this robot.
@@ -61,28 +67,35 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
         /// Root <see cref="Transform"/> of the robot (base fixed joint).
         /// </summary>
         public UrdfLink RootLink => links[0];
-        
+
         #endregion
-        
+
         #region Unity Callbacks
 
         private void Reset()
         {
             robot = GetComponent<UrdfRobot>();
-            CollectJoints();
-            CollectLinks();
+            CollectData();
         }
 
-        private void Awake()
-        {
-            CollectJoints();
-            CollectLinks();
-        }
+        private void Awake() { CollectData(); }
 
         #endregion
 
         #region Internal Methods
-        
+
+        private void CollectData()
+        {
+            CollectArticulationBodies();
+            CollectJoints();
+            CollectLinks();
+        }
+
+        /// <summary>
+        /// Collects references to all articulation bodies in the robot's kinematic chain.
+        /// </summary>
+        private void CollectArticulationBodies() { articulationBodies = robot.GetComponentsInChildren<ArticulationBody>().ToList(); }
+
         /// <summary>
         /// Collects references to the joints of the robot.
         /// </summary>
@@ -90,15 +103,15 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
         {
             // Find all joints
             joints = robot.GetComponentsInChildren<UrdfJoint>().ToList();
-            
+
             // Find all dynamic joints of the robot
             var allJoints = robot.GetComponentsInChildren<UrdfJoint>(true);
             var dynamicJoints = allJoints.Where(joint => !(joint is UrdfJointFixed)).ToList();
             jointArticulationBodies = dynamicJoints.Select(joint => joint.GetComponent<ArticulationBody>()).ToList();
-            
+
             // Find joint names
             jointNames = dynamicJoints.Select(joint => joint.jointName).ToList();
-            
+
             Debug.Log($"Collected {JointsCount} dynamic joints on the robot '{robot.name}'.");
         }
 
@@ -108,7 +121,7 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
         private void CollectLinks()
         {
             links = robot.GetComponentsInChildren<UrdfLink>().ToList();
-            
+
             Debug.Log($"Collected {LinksCount} links on the robot '{robot.name}'.");
         }
 

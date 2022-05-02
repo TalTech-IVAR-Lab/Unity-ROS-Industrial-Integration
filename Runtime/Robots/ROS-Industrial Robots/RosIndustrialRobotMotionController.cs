@@ -182,8 +182,15 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
             };
 
             var response = await rosConnection.SendServiceMessage<CmdJointTrajectoryResponse>(robotPathCommandServiceTopic, request);
-
-            return (response.code.val == ServiceReturnCodeMsg.SUCCESS);
+            
+            bool successful = (response.code.val == ServiceReturnCodeMsg.SUCCESS);
+            if (!successful)
+            {
+                Debug.LogError($"Failed to move robot using '{robotPathCommandServiceTopic}' ROS service:\n" +
+                               $"{response}\n");
+            }
+            
+            return successful;
         }
 
         public (string[], double[]) GetJointPositions() { return ((string[])jointStatesListener.jointNames.Clone(), (double[])jointStatesListener.jointPositions.Clone()); }
