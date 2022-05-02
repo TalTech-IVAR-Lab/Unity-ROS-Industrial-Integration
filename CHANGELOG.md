@@ -1,3 +1,10 @@
+### [1.0.3](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/compare/v1.0.2...v1.0.3) (2022-05-02)
+
+
+### 🛠 Fixes
+
+* **Virtual Robots:** Prohibit root articulation bodies in controlled robot joints chain ([187a21c](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/commit/187a21cbde1d71c9427b9a63ca2e339fa0051bb9))
+
 ### [1.0.2](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/compare/v1.0.1...v1.0.2) (2022-05-01)
 
 
