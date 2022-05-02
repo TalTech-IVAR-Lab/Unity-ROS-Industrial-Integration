@@ -1,6 +1,6 @@
 {
   "name": "ee.taltech.ivar.robotics.ros-industrial",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "displayName": "Unity ROS-Industrial Integration",
   "description": "Collection of scripts for integrating the digital twins of ROS-Industrial robots based on ROS TCP Connector and URDF Importer packages from Unity.",
   "unity": "2021.3",

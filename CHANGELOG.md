@@ -1,3 +1,10 @@
+### [1.1.1](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/compare/v1.1.0...v1.1.1) (2022-05-02)
+
+
+### 🛠 Fixes
+
+* **package:** Bump minimum Unity version ([f659e0e](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/commit/f659e0e27fd114483a6c4a03ff8c89451a0aeeeb))
+
 ## [1.1.0](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/compare/v1.0.3...v1.1.0) (2022-05-02)
 
 
