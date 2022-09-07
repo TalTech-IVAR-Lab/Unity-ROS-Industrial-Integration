@@ -1,11 +1,17 @@
 namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
 {
+    using System;
     using System.Linq;
+    using Actions;
     using Cysharp.Threading.Tasks;
+    using RosMessageTypes.Actionlib;
+    using RosMessageTypes.Control;
     using RosMessageTypes.Industrial;
     using RosMessageTypes.Std;
     using RosMessageTypes.Trajectory;
     using UnityEngine;
+    using Common;
+    using RosMessageTypes.BuiltinInterfaces;
 
     /// <summary>
     /// Interface for controlling the motion of a robot connected through ROS-Industrial.
@@ -43,7 +49,7 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
         /// <summary>
         /// TODO: docs (joint_trajectory_action from http://wiki.ros.org/industrial_robot_client/generic_implementation)
         /// </summary>
-        public RosConnectionExtensions.RosAction robotJointTrajectoryAction = new RosConnectionExtensions.RosAction("joint_trajectory_action");
+        public string robotJointTrajectoryActionTopic = "joint_trajectory_action";
 
         #endregion
 
@@ -55,7 +61,11 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
             rosConnection.RegisterRosService<TriggerRequest, TriggerResponse>(robotDisableServiceTopic);
             rosConnection.RegisterRosService<StartMotionRequest, StopMotionResponse>(robotStopMotionServiceTopic);
             rosConnection.RegisterRosService<CmdJointTrajectoryRequest, CmdJointTrajectoryResponse>(robotPathCommandServiceTopic);
-            // rosConnection.RegisterAction<FollowJointTrajectoryGoal, GoalIDMsg, FollowJointTrajectoryFeedback, GoalStatusArrayMsg, FollowJointTrajectoryResult>(robotJointTrajectoryAction);
+            rosConnection.RegisterRosAction<
+                FollowJointTrajectoryActionGoal,
+                FollowJointTrajectoryActionFeedback,
+                FollowJointTrajectoryActionResult
+            >(robotJointTrajectoryActionTopic);
         }
 
         #endregion
@@ -98,101 +108,54 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
         }
 
         // TODO: figure out what's better: service or action (joint_path_command Move() implementation below)
-        // public async UniTask<bool> Move(string[] names, double[] positions)
-        // {
-        //     var message = new FollowJointTrajectoryActionGoal
-        //     {
-        //         goal =
-        //         {
-        //             trajectory =
-        //             {
-        //                 joint_names = names,
-        //                 points = new[]
-        //                 {
-        //                     // current position
-        //                     new JointTrajectoryPointMsg
-        //                     {
-        //                         time_from_start =
-        //                         {
-        //                             sec = 0,
-        //                             nanosec = 0
-        //                         },
-        //                         positions = jointStatesListener.rawJointPositions,
-        //                         velocities = jointStatesListener.jointVelocities
-        //                     },
-        //                     // target position
-        //                     new JointTrajectoryPointMsg
-        //                     {
-        //                         time_from_start =
-        //                         {
-        //                             sec = 2,
-        //                             nanosec = 0
-        //                         },
-        //                         positions = positions,
-        //                         velocities = positions.Select(_ => 0d).ToArray()
-        //                     }
-        //                 }
-        //             }
-        //         }
-        //     };
-        //     
-        //     rosConnection.Publish(robotJointTrajectoryAction.GoalTopic, message);
-        //
-        //     return true;
-        // }
-
-        // TODO: figure out what's better: service or action (joint_path_command Move() implementation below)
         public async UniTask<bool> Move(string[] names, double[] positions)
         {
             Debug.Log("Moving robot to position (Unity): " + string.Join(", ", positions));
             positions = jointStatesListener.ConvertToRawPositions(names, positions);
             Debug.Log("Moving robot to position (ROS): " + string.Join(", ", positions));
 
-            var request = new CmdJointTrajectoryRequest
+            var goal = new FollowJointTrajectoryActionGoal
             {
-                trajectory =
+                goal = new FollowJointTrajectoryGoal
                 {
-                    joint_names = names,
-                    points = new[]
+                    trajectory = new JointTrajectoryMsg
                     {
-                        // current position
-                        new JointTrajectoryPointMsg
+                        joint_names = names,
+                        points = new[]
                         {
-                            time_from_start =
+                            new JointTrajectoryPointMsg()
                             {
-                                sec = 0,
-                                nanosec = 0
-                            },
-                            positions = jointStatesListener.rawJointPositions,
-                            velocities = jointStatesListener.jointVelocities
-                        },
-                        // target position
-                        new JointTrajectoryPointMsg
-                        {
-                            time_from_start =
-                            {
-                                sec = 3,
-                                nanosec = 0
-                            },
-                            positions = positions,
-                            velocities = positions.Select(_ => 0d).ToArray()
+                                positions = positions
+                            }
                         }
                     }
                 }
             };
 
-            var response = await rosConnection.SendServiceMessage<CmdJointTrajectoryResponse>(robotPathCommandServiceTopic, request);
-            
-            bool successful = (response.code.val == ServiceReturnCodeMsg.SUCCESS);
-            if (!successful)
+            string moveGoalID = rosConnection.PublishActionGoal(robotJointTrajectoryActionTopic, goal);
+
+            void ProcessStatusUpdate(GoalStatusArrayMsg statusArray)
             {
-                Debug.LogError($"Failed to move robot using '{robotPathCommandServiceTopic}' ROS service:\n" +
-                               $"{response}\n");
+                foreach (var status in statusArray.status_list)
+                {
+                    if (status.goal_id.id != moveGoalID) continue;
+
+                    var actionStatusCode = new RosActionGoalStatusCode(status.status);
+                    Debug.Log($"Move action status update: {status.status} ({actionStatusCode} - {status.text})");
+
+                    if (RosActionGoalStatusCode.IsTerminal(status.status)) { Debug.Log($"Move action has reached terminal state with status '{actionStatusCode}'."); }
+                }
             }
-            
-            return successful;
+
+            // rosConnection.Subscribe<GoalStatusArrayMsg>(action.StatusTopic, ProcessStatusUpdate);
+
+            return false;
         }
 
+        /// <summary>
+        /// Robot's joints positions adjusted for Unity (angular joint positions in degrees, linear joint positions in meters).
+        /// </summary>
+        /// <returns>Arrays of joint names and positions.</returns>
         public (string[], double[]) GetJointPositions() { return ((string[])jointStatesListener.jointNames.Clone(), (double[])jointStatesListener.jointPositions.Clone()); }
 
         #endregion
