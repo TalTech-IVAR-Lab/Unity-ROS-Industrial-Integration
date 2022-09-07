@@ -1,3 +1,23 @@
+### [1.1.1](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/compare/v1.1.0...v1.1.1) (2022-05-02)
+
+
+### 🛠 Fixes
+
+* **package:** Bump minimum Unity version ([f659e0e](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/commit/f659e0e27fd114483a6c4a03ff8c89451a0aeeeb))
+
+## [1.1.0](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/compare/v1.0.3...v1.1.0) (2022-05-02)
+
+
+### 🚀 Features
+
+* **Virtual Robots:** Add access to all articulation bodies of the robot ([7a2f731](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/commit/7a2f731f42be611bee352939465b08d1e99838ce))
+
+
+### 🛠 Fixes
+
+* **Real Robots:** Add error log on robot motion fail ([c88e435](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/commit/c88e435cb1a132d0dca38709ad5cca5eabb20432))
+* **Virtual Robots:** Improve root articulation body check ([29a3fbe](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/commit/29a3fbec377f04f27f7e995d5377bfb5c65c252b))
+
 ### [1.0.3](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/compare/v1.0.2...v1.0.3) (2022-05-02)
 
 
