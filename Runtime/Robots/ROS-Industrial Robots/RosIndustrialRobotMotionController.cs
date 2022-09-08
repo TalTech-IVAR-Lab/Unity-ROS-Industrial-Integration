@@ -1,17 +1,20 @@
 namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
 {
-    using System;
-    using System.Linq;
     using Actions;
     using Cysharp.Threading.Tasks;
-    using RosMessageTypes.Actionlib;
     using RosMessageTypes.Control;
     using RosMessageTypes.Industrial;
     using RosMessageTypes.Std;
     using RosMessageTypes.Trajectory;
     using UnityEngine;
-    using Common;
-    using RosMessageTypes.BuiltinInterfaces;
+    using FollowJointTrajectoryActionClient = Actions.RosActionClient<
+        RosMessageTypes.Control.FollowJointTrajectoryActionGoal,
+        RosMessageTypes.Control.FollowJointTrajectoryActionFeedback,
+        RosMessageTypes.Control.FollowJointTrajectoryActionResult,
+        RosMessageTypes.Control.FollowJointTrajectoryGoal,
+        RosMessageTypes.Control.FollowJointTrajectoryFeedback,
+        RosMessageTypes.Control.FollowJointTrajectoryResult
+    >;
 
     /// <summary>
     /// Interface for controlling the motion of a robot connected through ROS-Industrial.
@@ -51,6 +54,8 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
         /// </summary>
         public string robotJointTrajectoryActionTopic = "joint_trajectory_action";
 
+        private FollowJointTrajectoryActionClient jointTrajectoryActionClient;
+
         #endregion
 
         #region Unity Callbacks
@@ -60,12 +65,8 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
             rosConnection.RegisterRosService<TriggerRequest, TriggerResponse>(robotEnableServiceTopic);
             rosConnection.RegisterRosService<TriggerRequest, TriggerResponse>(robotDisableServiceTopic);
             rosConnection.RegisterRosService<StartMotionRequest, StopMotionResponse>(robotStopMotionServiceTopic);
-            rosConnection.RegisterRosService<CmdJointTrajectoryRequest, CmdJointTrajectoryResponse>(robotPathCommandServiceTopic);
-            rosConnection.RegisterRosAction<
-                FollowJointTrajectoryActionGoal,
-                FollowJointTrajectoryActionFeedback,
-                FollowJointTrajectoryActionResult
-            >(robotJointTrajectoryActionTopic);
+
+            jointTrajectoryActionClient = new FollowJointTrajectoryActionClient(rosConnection, robotJointTrajectoryActionTopic);
         }
 
         #endregion
@@ -107,49 +108,46 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
             return (response.code.val == ServiceReturnCodeMsg.SUCCESS);
         }
 
-        // TODO: figure out what's better: service or action (joint_path_command Move() implementation below)
         public async UniTask<bool> Move(string[] names, double[] positions)
         {
             Debug.Log("Moving robot to position (Unity): " + string.Join(", ", positions));
             positions = jointStatesListener.ConvertToRawPositions(names, positions);
             Debug.Log("Moving robot to position (ROS): " + string.Join(", ", positions));
 
-            var goal = new FollowJointTrajectoryActionGoal
+            var goal = new FollowJointTrajectoryGoal
             {
-                goal = new FollowJointTrajectoryGoal
+                trajectory = new JointTrajectoryMsg
                 {
-                    trajectory = new JointTrajectoryMsg
+                    joint_names = names,
+                    points = new[]
                     {
-                        joint_names = names,
-                        points = new[]
+                        new JointTrajectoryPointMsg()
                         {
-                            new JointTrajectoryPointMsg()
-                            {
-                                positions = positions
-                            }
+                            positions = positions
                         }
                     }
                 }
             };
+            
+            var result = await jointTrajectoryActionClient.ExecuteAction(goal);
 
-            string moveGoalID = rosConnection.PublishActionGoal(robotJointTrajectoryActionTopic, goal);
-
-            void ProcessStatusUpdate(GoalStatusArrayMsg statusArray)
+            var statusCode = new RosActionGoalStatusCode(result.status.status);
+            if (!statusCode.IsSuccessful)
             {
-                foreach (var status in statusArray.status_list)
-                {
-                    if (status.goal_id.id != moveGoalID) continue;
-
-                    var actionStatusCode = new RosActionGoalStatusCode(status.status);
-                    Debug.Log($"Move action status update: {status.status} ({actionStatusCode} - {status.text})");
-
-                    if (RosActionGoalStatusCode.IsTerminal(status.status)) { Debug.Log($"Move action has reached terminal state with status '{actionStatusCode}'."); }
-                }
+                Debug.LogError($"Motion action failed with status code {statusCode.code} ({statusCode}):\n" +
+                               $"{result.status.text}");
+                return false;
             }
-
-            // rosConnection.Subscribe<GoalStatusArrayMsg>(action.StatusTopic, ProcessStatusUpdate);
-
-            return false;
+            
+            var errorCode = result.result.error_code;
+            if (errorCode != 0)
+            {
+                Debug.LogError($"Motion failed with error code {result.result.error_code}:\n" +
+                               $"{result.result.error_string}");
+                return false;
+            }
+            
+            return true;
         }
 
         /// <summary>

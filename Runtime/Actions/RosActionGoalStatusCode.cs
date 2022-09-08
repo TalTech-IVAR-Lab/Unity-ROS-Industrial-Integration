@@ -78,7 +78,11 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial.Actions
         /// <remarks>
         /// http://docs.ros.org/en/api/actionlib_msgs/html/msg/GoalStatus.html
         /// </remarks>
-        /// <param name="code">Goal status code to be checked.</param>
-        public static bool IsTerminal(int code) { return TerminalStateCodes.Contains(code); }
+        public bool IsTerminal => TerminalStateCodes.Contains(code);
+
+        /// <summary>
+        /// Checks if the given action status code corresponds to success.
+        /// </summary>
+        public bool IsSuccessful => code == (int)RosActionGoalStatusCodeEnum.SUCCEEDED;
     }
 }
