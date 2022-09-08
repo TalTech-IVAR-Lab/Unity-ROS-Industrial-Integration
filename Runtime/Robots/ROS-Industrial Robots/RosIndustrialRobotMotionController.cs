@@ -129,12 +129,20 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
                 }
             };
             
-            var result = await jointTrajectoryActionClient.ExecuteAction(goal);
+            string goalID = jointTrajectoryActionClient.InitiateAction(goal);
+
+            await foreach (var status in jointTrajectoryActionClient.MonitorActionStatus(goalID))
+            {
+                var code = new RosActionGoalStatusCode(status.status);
+                Debug.Log($"Received move status update: [{status.status}/{code}] {status.text}");
+            }
+            
+            var result = await jointTrajectoryActionClient.WaitUntilActionCompletes(goalID);
 
             var statusCode = new RosActionGoalStatusCode(result.status.status);
             if (!statusCode.IsSuccessful)
             {
-                Debug.LogError($"Motion action failed with status code {statusCode.code} ({statusCode}):\n" +
+                Debug.LogError($"Motion action failed to be processed. Status code {statusCode.code} ({statusCode}):\n" +
                                $"{result.status.text}");
                 return false;
             }
@@ -142,7 +150,7 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
             var errorCode = result.result.error_code;
             if (errorCode != 0)
             {
-                Debug.LogError($"Motion failed with error code {result.result.error_code}:\n" +
+                Debug.LogError($"Motion execution failed with error code {result.result.error_code}:\n" +
                                $"{result.result.error_string}");
                 return false;
             }
