@@ -107,7 +107,6 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
 
         #endregion
 
-
         #region Private Methods
 
         private void UpdateJointStates(JointStateMsg msg)
