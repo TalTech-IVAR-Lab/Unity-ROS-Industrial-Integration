@@ -1,3 +1,10 @@
+## [1.2.0](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/compare/v1.1.1...v1.2.0) (2022-09-08)
+
+
+### 🚀 Features
+
+* **ROS Integration:** Implement ROS action client ([1b57edc](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/commit/1b57edcfc68f3a3109dd6653e1f71d11fb7aa70d))
+
 ### [1.1.1](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/compare/v1.1.0...v1.1.1) (2022-05-02)
 
 
