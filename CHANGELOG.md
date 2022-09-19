@@ -1,3 +1,10 @@
+## [1.2.1](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/compare/v1.2.0...v1.2.1) (2022-09-19)
+
+
+### 🛠 Fixes
+
+* Remove RosConnectionExtensions ([152c3b7](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/commit/152c3b73ab46bb649eb907955ed787b92b1378b8))
+
 ## [1.2.0](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/compare/v1.1.1...v1.2.0) (2022-09-08)
 
 
