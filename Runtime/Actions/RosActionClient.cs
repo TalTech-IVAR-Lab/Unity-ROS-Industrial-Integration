@@ -218,7 +218,7 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial.Actions
         /// </summary>
         /// <param name="goalID">Goal ID to check.</param>
         /// <returns>True if action is complete, false if it is not yet complete or not tracked by this client.</returns>
-        private bool IsActionComplete(string goalID)
+        public bool IsActionComplete(string goalID)
         {
             if (!actionStates.TryGetValue(goalID, out var state)) return false;
             

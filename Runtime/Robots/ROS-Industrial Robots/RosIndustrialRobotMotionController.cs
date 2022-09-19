@@ -4,6 +4,7 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
     using Cysharp.Threading.Tasks;
     using RosMessageTypes.Control;
     using RosMessageTypes.Industrial;
+    using RosMessageTypes.Moveit;
     using RosMessageTypes.Std;
     using RosMessageTypes.Trajectory;
     using UnityEngine;
@@ -110,9 +111,14 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
 
         public async UniTask<bool> Move(string[] names, double[] positions)
         {
-            Debug.Log("Moving robot to position (Unity): " + string.Join(", ", positions));
+            string unityPositions = string.Join(", ", positions);
+            
             positions = jointStatesListener.ConvertToRawPositions(names, positions);
-            Debug.Log("Moving robot to position (ROS): " + string.Join(", ", positions));
+            
+            string rosPositions = string.Join(", ", positions);
+            Debug.Log("Moving robot to position:\n" +
+                      $"{unityPositions} (Unity coordinate space)" +
+                      $"{rosPositions} (ROS coordinate space)");
 
             var goal = new FollowJointTrajectoryGoal
             {
