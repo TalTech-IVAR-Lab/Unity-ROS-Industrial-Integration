@@ -1,3 +1,10 @@
+## [1.2.2](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/compare/v1.2.1...v1.2.2) (2022-09-20)
+
+
+### 🛠 Fixes
+
+* Change naming in ROS-I Robot Controller ([ba15940](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/commit/ba159400236e40c63b11585f12afda77922a0a7d))
+
 ## [1.2.1](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/compare/v1.2.0...v1.2.1) (2022-09-19)
 
 
