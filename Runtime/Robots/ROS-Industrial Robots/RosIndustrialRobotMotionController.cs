@@ -1,10 +1,11 @@
 namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
 {
+    using System.Linq;
     using Actions;
     using Cysharp.Threading.Tasks;
+    using RosMessageTypes.BuiltinInterfaces;
     using RosMessageTypes.Control;
     using RosMessageTypes.Industrial;
-    using RosMessageTypes.Moveit;
     using RosMessageTypes.Std;
     using RosMessageTypes.Trajectory;
     using UnityEngine;
@@ -27,7 +28,7 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
         [Header("ROS-Industrial Listeners")]
         public RosIndustrialRobotStatusListener robotStatusListener;
 
-        public RosIndustrialRobotJointStatesListener jointStatesListener;
+        public RosIndustrialRobotJointStatesListener robotJointStatesListener;
 
         /// <summary>
         /// ROS topic to enable the robot.
@@ -44,11 +45,6 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
         /// ROS topic to stop current robot motion.
         /// </summary>
         public string robotStopMotionServiceTopic = "stop_motion";
-
-        /// <summary>
-        /// ROS topic to execute motion on the robot.
-        /// </summary>
-        public string robotPathCommandServiceTopic = "joint_path_command";
 
         /// <summary>
         /// TODO: docs (joint_trajectory_action from http://wiki.ros.org/industrial_robot_client/generic_implementation)
@@ -113,7 +109,7 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
         {
             string unityPositions = string.Join(", ", positions);
             
-            positions = jointStatesListener.ConvertToRawPositions(names, positions);
+            positions = robotJointStatesListener.ConvertToRawPositions(names, positions);
             
             string rosPositions = string.Join(", ", positions);
             Debug.Log("Moving robot to position:\n" +
@@ -129,7 +125,11 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
                     {
                         new JointTrajectoryPointMsg()
                         {
-                            positions = positions
+                            positions = positions,
+                            time_from_start = new DurationMsg()
+                            {
+                                sec = 10
+                            },
                         }
                     }
                 }
@@ -168,7 +168,7 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
         /// Robot's joints positions adjusted for Unity (angular joint positions in degrees, linear joint positions in meters).
         /// </summary>
         /// <returns>Arrays of joint names and positions.</returns>
-        public (string[], double[]) GetJointPositions() { return ((string[])jointStatesListener.jointNames.Clone(), (double[])jointStatesListener.jointPositions.Clone()); }
+        public (string[], double[]) GetJointPositions() { return ((string[])robotJointStatesListener.jointNames.Clone(), (double[])robotJointStatesListener.jointPositions.Clone()); }
 
         #endregion
     }
