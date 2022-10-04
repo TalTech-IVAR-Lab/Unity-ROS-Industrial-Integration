@@ -1,6 +1,6 @@
 namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
 {
-    using System.Linq;
+    using System;
     using Actions;
     using Cysharp.Threading.Tasks;
     using RosMessageTypes.BuiltinInterfaces;
@@ -109,7 +109,7 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
         {
             string unityPositions = string.Join(", ", positions);
             
-            positions = robotJointStatesListener.ConvertToRawPositions(names, positions);
+            positions = RobotJointPositionsConversionUtility.UnityToRos(robotJointStatesListener.unityRobot, names, positions);
             
             string rosPositions = string.Join(", ", positions);
             Debug.Log("Moving robot to position:\n" +
@@ -123,12 +123,13 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
                     joint_names = names,
                     points = new[]
                     {
-                        new JointTrajectoryPointMsg()
+                        new JointTrajectoryPointMsg
                         {
                             positions = positions,
-                            time_from_start = new DurationMsg()
+                            // velocities = Array.Empty<double>(),
+                            time_from_start = new DurationMsg
                             {
-                                sec = 10
+                                sec = 5
                             },
                         }
                     }
@@ -148,7 +149,7 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
             var statusCode = new RosActionGoalStatusCode(result.status.status);
             if (!statusCode.IsSuccessful)
             {
-                Debug.LogError($"Motion action failed to be processed. Status code {statusCode.code} ({statusCode}):\n" +
+                Debug.LogError($"Motion action failed to be processed. Status code {statusCode.value} ({statusCode}):\n" +
                                $"{result.status.text}");
                 return false;
             }
@@ -168,7 +169,7 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
         /// Robot's joints positions adjusted for Unity (angular joint positions in degrees, linear joint positions in meters).
         /// </summary>
         /// <returns>Arrays of joint names and positions.</returns>
-        public (string[], double[]) GetJointPositions() { return ((string[])robotJointStatesListener.jointNames.Clone(), (double[])robotJointStatesListener.jointPositions.Clone()); }
+        public (string[], double[]) GetJointPositions() { return ((string[])robotJointStatesListener.jointNames.Clone(), (double[])robotJointStatesListener.unityJointPositions.Clone()); }
 
         #endregion
     }

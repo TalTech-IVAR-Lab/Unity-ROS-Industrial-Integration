@@ -34,15 +34,21 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
         /// Joint positions as received from ROS
         /// (angular joint positions in radians, linear joint positions in meters).
         /// </summary>
+        /// <remarks>
+        /// WARNING: These values must not be used as a reference for live robot control, as they are likely to be delayed due to network lag.
+        /// </remarks>
         [Restricted(RestrictedAttribute.Restrictions.ReadOnlyAlways)]
-        public double[] rawJointPositions = Array.Empty<double>();
+        public double[] rosJointPositions = Array.Empty<double>();
 
         /// <summary>
         /// Joint positions adjusted for Unity
         /// (angular joint positions in degrees, linear joint positions in meters).
         /// </summary>
+        /// <remarks>
+        /// WARNING: These values must not be used as a reference for live robot control, as they are likely to be delayed due to network lag.
+        /// </remarks>
         [Restricted(RestrictedAttribute.Restrictions.ReadOnlyAlways)]
-        public double[] jointPositions = Array.Empty<double>();
+        public double[] unityJointPositions = Array.Empty<double>();
 
         [Restricted(RestrictedAttribute.Restrictions.ReadOnlyAlways)]
         public double[] jointVelocities = Array.Empty<double>();
@@ -58,51 +64,6 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
         {
             rosConnection.RegisterPublisher<JointStateMsg>(jointStatesTopic);
             rosConnection.Subscribe<JointStateMsg>(jointStatesTopic, UpdateJointStates);
-        }
-
-        #endregion
-
-        #region Public Methods
-
-        public double[] ConvertToRawPositions(string[] names, double[] unityPositions)
-        {
-            double[] rawPositions = new double[unityPositions.Length];
-
-            for (int i = 0; i < names.Length; i++)
-            for (int j = 0; j < unityRobot.jointNames.Count; j++)
-            {
-                if (names[i] != unityRobot.jointNames[i]) continue;
-                double position = unityPositions[i];
-
-                bool isRevolute = unityRobot.jointArticulationBodies[i].jointType == ArticulationJointType.RevoluteJoint;
-                if (isRevolute) { position = position / 180d * Math.PI; }
-                // TODO: check if we should handle spherical joints, too
-
-                rawPositions[i] = position;
-            }
-
-            return rawPositions;
-        }
-
-        public double[] ConvertToUnityPositions(string[] names, double[] rawPositions)
-        {
-            double[] unityPositions = new double[rawPositions.Length];
-
-            for (int i = 0; i < names.Length; i++)
-            for (int j = 0; j < unityRobot.jointNames.Count; j++)
-            {
-                if (names[i] != unityRobot.jointNames[i]) continue;
-
-                double position = rawPositions[i];
-
-                bool isRevolute = unityRobot.jointArticulationBodies[i].jointType == ArticulationJointType.RevoluteJoint;
-                if (isRevolute) { position = position / Math.PI * 180d; }
-                // TODO: check if we should handle spherical joints, too
-
-                unityPositions[i] = position;
-            }
-
-            return unityPositions;
         }
 
         #endregion
@@ -126,18 +87,18 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
             }
 
             jointNames = rosJointNames;
-            rawJointPositions = msg.position;
+            rosJointPositions = msg.position;
 
-            jointPositions = new double[jointNames.Length];
+            unityJointPositions = new double[jointNames.Length];
             for (int i = 0; i < jointNames.Length; i++)
             {
-                double position = rawJointPositions[i];
+                double position = rosJointPositions[i];
 
                 // TODO: check if we should handle spherical joints, too
                 bool isRevolute = unityRobot.jointArticulationBodies[i].jointType == ArticulationJointType.RevoluteJoint;
                 if (isRevolute) { position = position / Math.PI * 180; }
 
-                jointPositions[i] = position;
+                unityJointPositions[i] = position;
             }
 
             jointVelocities = msg.velocity;
