@@ -9,9 +9,15 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial.Common
     public class StatusCodeBase<TCodeEnum> where TCodeEnum : Enum
     {
         /// <summary>
-        /// Integer status code.
+        /// Status code enum value.
         /// </summary>
         public readonly TCodeEnum value;
+        
+        /// <summary>
+        /// Integer status code.
+        /// </summary>
+        public readonly int intValue;
+        
         /// <summary>
         /// Name of the status code.
         /// </summary>
@@ -19,6 +25,7 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial.Common
 
         public StatusCodeBase(int value)
         {
+            intValue = value;
             this.value = (TCodeEnum)(object)value;
             name = Enum.GetName(typeof(TCodeEnum), value);
         }
