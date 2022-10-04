@@ -2,6 +2,7 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
 {
     using System;
     using System.Collections.Generic;
+    using System.Threading;
     using Cysharp.Threading.Tasks;
     using UnityEngine;
 
@@ -97,7 +98,7 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
             return true;
         }
 
-        public async UniTask<bool> Move(string[] jointNames, double[] positions)
+        public async UniTask<bool> Move(string[] jointNames, double[] positions, CancellationToken cancellationToken = default)
         {
             try
             {
