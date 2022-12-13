@@ -18,7 +18,7 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
 
         #region Unity Callbacks
 
-        private void OnEnable()
+        private void Start()
         {
             rosConnection.RegisterPublisher<RobotStatusMsg>(robotStatusTopic);
             rosConnection.Subscribe<RobotStatusMsg>(robotStatusTopic, UpdateRobotStatus);

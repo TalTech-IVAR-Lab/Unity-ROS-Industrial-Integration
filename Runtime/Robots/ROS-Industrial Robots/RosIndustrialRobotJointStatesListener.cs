@@ -60,7 +60,7 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
 
         #region Unity Callbacks
 
-        private void OnEnable()
+        private void Start()
         {
             rosConnection.RegisterPublisher<JointStateMsg>(jointStatesTopic);
             rosConnection.Subscribe<JointStateMsg>(jointStatesTopic, UpdateJointStates);
