@@ -1,3 +1,35 @@
+## [1.3.0](https://github.com/TalTech-IVAR-Lab/Unity-ROS-Industrial-Integration/compare/v1.2.0...v1.3.0) (2023-01-06)
+
+
+### ⚙️ CI/CD
+
+* Switch to GitHub CI ([666fe41](https://github.com/TalTech-IVAR-Lab/Unity-ROS-Industrial-Integration/commit/666fe413ecfae305d4ef29a00f6bd7fb378c783f))
+
+
+### 🎲 Other
+
+* **release:** 1.2.1 [skip ci] ([9ff5ef8](https://github.com/TalTech-IVAR-Lab/Unity-ROS-Industrial-Integration/commit/9ff5ef82be8f464463aad5a6598002e511f0fa70))
+* **release:** 1.2.2 [skip ci] ([378bf5c](https://github.com/TalTech-IVAR-Lab/Unity-ROS-Industrial-Integration/commit/378bf5cf42d3b8073753a7d13249b81279d78d45))
+* **release:** 1.3.0 [skip ci] ([fd59058](https://github.com/TalTech-IVAR-Lab/Unity-ROS-Industrial-Integration/commit/fd5905859108b7f9cb66fe8b2639e79d3b5a5cde))
+* **release:** 1.3.0 [skip ci] ([57db380](https://github.com/TalTech-IVAR-Lab/Unity-ROS-Industrial-Integration/commit/57db380696d8fa67384bc5bdad0bfd0535972bff))
+
+
+### 🚀 Features
+
+* Add CancellationToken support to RosActionClient ([ab55f33](https://github.com/TalTech-IVAR-Lab/Unity-ROS-Industrial-Integration/commit/ab55f33ad120c98a68013cc749919bfe11e853ac))
+
+
+### 🛠 Fixes
+
+* Add CancellationToken to IRosRobotController interface ([ad591b5](https://github.com/TalTech-IVAR-Lab/Unity-ROS-Industrial-Integration/commit/ad591b51fccc6b77dac84d7eb727669a4bd93415))
+* Add int value to StatusCodeBase ([cfa1e86](https://github.com/TalTech-IVAR-Lab/Unity-ROS-Industrial-Integration/commit/cfa1e86519fd1ec4d4130ab45eb6899144069482))
+* Add utility class for converting robot joint poses between Unity and ROS ([ea1106a](https://github.com/TalTech-IVAR-Lab/Unity-ROS-Industrial-Integration/commit/ea1106a0c9fc3c637cc855ba40269b6514b4bb9f))
+* Change initialization moment on scripts using ROS Connection ([5d644c8](https://github.com/TalTech-IVAR-Lab/Unity-ROS-Industrial-Integration/commit/5d644c87566b895fc67308f67973bd4f57ff8335))
+* Change naming in ROS-I Robot Controller ([ba15940](https://github.com/TalTech-IVAR-Lab/Unity-ROS-Industrial-Integration/commit/ba159400236e40c63b11585f12afda77922a0a7d))
+* Make StatusCode's value an enum by default ([aa7717a](https://github.com/TalTech-IVAR-Lab/Unity-ROS-Industrial-Integration/commit/aa7717ab3f2c33b5b7d7de92d87b49708f954285))
+* Remove RosConnectionExtensions ([152c3b7](https://github.com/TalTech-IVAR-Lab/Unity-ROS-Industrial-Integration/commit/152c3b73ab46bb649eb907955ed787b92b1378b8))
+* Remove RosIndustrialRobotMotionController ([97c621f](https://github.com/TalTech-IVAR-Lab/Unity-ROS-Industrial-Integration/commit/97c621f702c47cec1ed9ef1fb56891630d156a9e))
+
 ## [1.3.0](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/compare/v1.2.2...v1.3.0) (2022-10-05)
 
 
