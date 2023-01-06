@@ -58,18 +58,18 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial.Actions
 
     public class RosActionGoalStatusCode : StatusCodeBase<RosActionGoalStatusCodeEnum>
     {
-        public RosActionGoalStatusCode(int code) : base(code) { }
+        public RosActionGoalStatusCode(int value) : base(value) { }
 
         /// <summary>
         /// Status codes which correspond to the terminal states of the action.
         /// </summary>
-        private static int[] TerminalStateCodes = new int[]
+        private static RosActionGoalStatusCodeEnum[] TerminalStateCodes =
         {
-            (int)RosActionGoalStatusCodeEnum.REJECTED,
-            (int)RosActionGoalStatusCodeEnum.RECALLED,
-            (int)RosActionGoalStatusCodeEnum.PREEMPTED,
-            (int)RosActionGoalStatusCodeEnum.ABORTED,
-            (int)RosActionGoalStatusCodeEnum.SUCCEEDED,
+            RosActionGoalStatusCodeEnum.REJECTED,
+            RosActionGoalStatusCodeEnum.RECALLED,
+            RosActionGoalStatusCodeEnum.PREEMPTED,
+            RosActionGoalStatusCodeEnum.ABORTED,
+            RosActionGoalStatusCodeEnum.SUCCEEDED,
         };
 
         /// <summary>
@@ -78,11 +78,11 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial.Actions
         /// <remarks>
         /// http://docs.ros.org/en/api/actionlib_msgs/html/msg/GoalStatus.html
         /// </remarks>
-        public bool IsTerminal => TerminalStateCodes.Contains(code);
+        public bool IsTerminal => TerminalStateCodes.Contains(value);
 
         /// <summary>
         /// Checks if the given action status code corresponds to success.
         /// </summary>
-        public bool IsSuccessful => code == (int)RosActionGoalStatusCodeEnum.SUCCEEDED;
+        public bool IsSuccessful => value == RosActionGoalStatusCodeEnum.SUCCEEDED;
     }
 }

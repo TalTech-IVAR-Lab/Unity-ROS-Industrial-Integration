@@ -1,3 +1,54 @@
+## [1.3.0](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/compare/v1.2.2...v1.3.0) (2022-10-05)
+
+
+### 🚀 Features
+
+* Add CancellationToken support to RosActionClient ([ab55f33](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/commit/ab55f33ad120c98a68013cc749919bfe11e853ac))
+
+
+### 🛠 Fixes
+
+* Add CancellationToken to IRosRobotController interface ([ad591b5](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/commit/ad591b51fccc6b77dac84d7eb727669a4bd93415))
+* Add int value to StatusCodeBase ([cfa1e86](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/commit/cfa1e86519fd1ec4d4130ab45eb6899144069482))
+* Add utility class for converting robot joint poses between Unity and ROS ([ea1106a](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/commit/ea1106a0c9fc3c637cc855ba40269b6514b4bb9f))
+* Make StatusCode's value an enum by default ([aa7717a](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/commit/aa7717ab3f2c33b5b7d7de92d87b49708f954285))
+* Remove RosIndustrialRobotMotionController ([97c621f](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/commit/97c621f702c47cec1ed9ef1fb56891630d156a9e))
+
+
+### Other
+
+* **release:** 1.3.0 [skip ci] ([57db380](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/commit/57db380696d8fa67384bc5bdad0bfd0535972bff))
+
+## [1.3.0](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/compare/v1.2.2...v1.3.0) (2022-10-04)
+
+
+### 🚀 Features
+
+* Add CancellationToken support to RosActionClient ([ab55f33](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/commit/ab55f33ad120c98a68013cc749919bfe11e853ac))
+
+
+### 🛠 Fixes
+
+* Add CancellationToken to IRosRobotController interface ([ad591b5](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/commit/ad591b51fccc6b77dac84d7eb727669a4bd93415))
+* Add int value to StatusCodeBase ([cfa1e86](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/commit/cfa1e86519fd1ec4d4130ab45eb6899144069482))
+* Add utility class for converting robot joint poses between Unity and ROS ([ea1106a](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/commit/ea1106a0c9fc3c637cc855ba40269b6514b4bb9f))
+* Make StatusCode's value an enum by default ([aa7717a](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/commit/aa7717ab3f2c33b5b7d7de92d87b49708f954285))
+* Remove RosIndustrialRobotMotionController ([97c621f](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/commit/97c621f702c47cec1ed9ef1fb56891630d156a9e))
+
+## [1.2.2](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/compare/v1.2.1...v1.2.2) (2022-09-20)
+
+
+### 🛠 Fixes
+
+* Change naming in ROS-I Robot Controller ([ba15940](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/commit/ba159400236e40c63b11585f12afda77922a0a7d))
+
+## [1.2.1](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/compare/v1.2.0...v1.2.1) (2022-09-19)
+
+
+### 🛠 Fixes
+
+* Remove RosConnectionExtensions ([152c3b7](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/commit/152c3b73ab46bb649eb907955ed787b92b1378b8))
+
 ## [1.2.0](https://gitlab.com/IVAR_Lab/Unity-ROS-Industrial-Integration/compare/v1.1.1...v1.2.0) (2022-09-08)
 
 

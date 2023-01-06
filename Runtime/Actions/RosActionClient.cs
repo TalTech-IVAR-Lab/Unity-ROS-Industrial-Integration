@@ -2,12 +2,12 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial.Actions
 {
     using System;
     using System.Collections.Generic;
+    using System.Threading;
     using Cysharp.Threading.Tasks;
     using Cysharp.Threading.Tasks.Linq;
     using RosMessageTypes.Actionlib;
     using Unity.Robotics.ROSTCPConnector;
     using Unity.Robotics.ROSTCPConnector.MessageGeneration;
-    using UnityEngine;
 
     /// <summary>
     /// Provides methods for convenient communication with ROS action servers.
@@ -128,17 +128,18 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial.Actions
 
             // Publish action goal
             RosConnection.Publish(ActionTopics.goal, goalMsg);
-
+            
             return goalID;
         }
-        
+
         /// <summary>
         /// Awaits until the action with the given goal ID reaches terminal state.
         /// </summary>
         /// <param name="goalID">ID of the goal to await.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>The result of the action.</returns>
         /// <exception cref="InvalidOperationException"></exception>
-        public async UniTask<TActionResult> WaitUntilActionCompletes(string goalID)
+        public async UniTask<TActionResult> WaitUntilActionCompletes(string goalID, CancellationToken cancellationToken = default)
         {
             if (!actionStates.ContainsKey(goalID))
             {
@@ -147,7 +148,7 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial.Actions
             }
 
             // Once the result is not null, the action is complete
-            await UniTask.WaitUntil(() => IsActionComplete(goalID));
+            await UniTask.WaitUntil(() => IsActionCompleted(goalID), cancellationToken: cancellationToken);
 
             // The action is complete and does not have to be tracked anymore, so we remove its goal ID from the dict
             var result = actionStates[goalID].result;
@@ -165,7 +166,7 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial.Actions
                 var statusHistory = actionStates[goalID].statusHistory;
                 
                 // Keep yielding new statuses as they come until the action is complete
-                while (!IsActionComplete(goalID) && !token.IsCancellationRequested)
+                while (!IsActionCompleted(goalID) && !token.IsCancellationRequested)
                 {
                     int requiredHistoryCount = currentStatusIndex + 1;
                     await UniTask.WaitUntil(() => (statusHistory.Count >= requiredHistoryCount), cancellationToken: token);
@@ -195,7 +196,7 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial.Actions
         /// <exception cref="NotImplementedException"></exception>
         public void CancelAction(string goalID, bool cancelAllPreviousActions = false)
         {
-            if (IsActionComplete(goalID)) return;
+            if (IsActionCompleted(goalID)) return;
             
             var goalIDMsg = new GoalIDMsg
             {
@@ -217,10 +218,14 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial.Actions
         /// Checks whether action with the given goal ID is complete.
         /// </summary>
         /// <param name="goalID">Goal ID to check.</param>
-        /// <returns>True if action is complete, false if it is not yet complete or not tracked by this client.</returns>
-        private bool IsActionComplete(string goalID)
+        /// <returns>True if action is complete or not tracked by this client, false otherwise.</returns>
+        public bool IsActionCompleted(string goalID)
         {
-            if (!actionStates.TryGetValue(goalID, out var state)) return false;
+            if (!actionStates.TryGetValue(goalID, out var state))
+            {
+                // Not tracked.
+                return true;
+            }
             
             return state.result != null;
         }
