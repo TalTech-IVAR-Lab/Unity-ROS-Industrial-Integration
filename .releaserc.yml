@@ -9,10 +9,12 @@ plugins:
   - # this has to be done to replace npmjs with our custom registry when npm plugin executes
     - "@semantic-release/exec"
     - shell: "bash"
-      verifyConditionsCmd: "npm config set registry $CUSTOM_NPM_REGISTRY"
+      verifyConditionsCmd: "npm config set registry $NPM_REGISTRY"
   - "@semantic-release/npm"
   - "@semantic-release/git"
-  - "@semantic-release/gitlab"
+  - # disabling success comment to avoid CI workflow breaking (https://github.com/semantic-release/github/issues/415#issuecomment-924001799)
+    - "@semantic-release/github"
+    - successComment: false
 branches:
   - "main"
   - "+([0-9])?(.{+([0-9]),x}).x"
@@ -29,13 +31,13 @@ generateNotes:
     linkCompare: true
     linkReferences: true
     presetConfig:
-      types:  # looks like it only works with 'conventionalcommits' preset
+      types:  # only works with 'conventionalcommits' preset
         - type: 'build'
-          section: '🦊 CI/CD'
+          section: '⚙️ CI/CD'
         - type: 'chore'
-          section: 'Other'
+          section: '🎲 Other'
         - type: 'ci'
-          section: '🦊 CI/CD'
+          section: '⚙️ CI/CD'
         - type: 'docs'
           section: '📔 Docs'
         - type: 'example'
