@@ -1,3 +1,10 @@
+## [1.3.1](https://github.com/TalTech-IVAR-Lab/Unity-ROS-Industrial-Integration/compare/v1.3.0...v1.3.1) (2023-01-15)
+
+
+### 🛠 Fixes
+
+* Update docstring ([b4e043e](https://github.com/TalTech-IVAR-Lab/Unity-ROS-Industrial-Integration/commit/b4e043e0a4b8a4c95e05d06fce92cbcf0e17abda))
+
 ## [1.3.0](https://github.com/TalTech-IVAR-Lab/Unity-ROS-Industrial-Integration/compare/v1.2.0...v1.3.0) (2023-01-06)
 
 
