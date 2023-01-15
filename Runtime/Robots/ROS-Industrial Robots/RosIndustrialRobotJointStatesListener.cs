@@ -31,8 +31,7 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
         public string[] jointNames = Array.Empty<string>();
 
         /// <summary>
-        /// Joint positions as received from ROS
-        /// (angular joint positions in radians, linear joint positions in meters).
+        /// Joint positions as received from ROS (angular joint positions in radians, linear joint positions in meters).
         /// </summary>
         /// <remarks>
         /// WARNING: These values must not be used as a reference for live robot control, as they are likely to be delayed due to network lag.
