@@ -1,7 +1,6 @@
 namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
 {
     using System;
-    using System.Collections.Generic;
     using System.Threading;
     using Cysharp.Threading.Tasks;
     using UnityEngine;
@@ -42,6 +41,8 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
         /// </summary>
         public float[] jointTargets = Array.Empty<float>();
 
+        private RobotJointContract.Metadata targetMetadataBinding;
+
         /// <summary>
         /// Motion tolerance in degrees.
         /// </summary>
@@ -49,6 +50,38 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
         /// Used to check if the robot has reached the target position.
         /// </remarks>
         private const float MOTION_TOLERANCE = 0.01f;
+
+        private sealed class KinematicUpdateSnapshot
+        {
+            internal KinematicUpdateSnapshot(
+                ArticulationBody[] allBodies,
+                ArticulationBody[] jointBodies,
+                ArticulationBody[] parentBodies,
+                float[] targets)
+            {
+                AllBodies = allBodies;
+                JointBodies = jointBodies;
+                ParentBodies = parentBodies;
+                Targets = targets;
+            }
+
+            internal ArticulationBody[] AllBodies { get; }
+            internal ArticulationBody[] JointBodies { get; }
+            internal ArticulationBody[] ParentBodies { get; }
+            internal float[] Targets { get; }
+        }
+
+        private sealed class PhysicalUpdateSnapshot
+        {
+            internal PhysicalUpdateSnapshot(ArticulationBody[] jointBodies, float[] targets)
+            {
+                JointBodies = jointBodies;
+                Targets = targets;
+            }
+
+            internal ArticulationBody[] JointBodies { get; }
+            internal float[] Targets { get; }
+        }
 
         #endregion
 
@@ -58,14 +91,25 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
 
         private void FixedUpdate()
         {
-            switch (controlMode)
+            try
             {
-                case ControlMode.Kinematic:
-                    UpdateArticulationBodiesKinematic();
-                    break;
-                case ControlMode.Physical:
-                    UpdateArticulationBodiesPhysical();
-                    break;
+                switch (controlMode)
+                {
+                    case ControlMode.Kinematic:
+                        UpdateArticulationBodiesKinematic(CaptureKinematicUpdate());
+                        break;
+                    case ControlMode.Physical:
+                        UpdateArticulationBodiesPhysical(CapturePhysicalUpdate());
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
+            }
+            catch (Exception exception)
+            {
+                targetMetadataBinding = null;
+                Debug.LogError($"Rejected robot controller FixedUpdate: {exception.Message}", this);
+                enabled = false;
             }
         }
 
@@ -75,22 +119,53 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
 
         public (string[], double[]) GetJointPositions()
         {
-            var jointPositions = new List<double>(robot.JointsCount);
+            RobotJointContract.Metadata metadata = RobotJointContract.Capture(robot, nameof(robot));
+            var jointPositions = new double[metadata.Count];
 
-            for (int i = 0; i < robot.JointsCount; i++)
+            for (int i = 0; i < metadata.Count; i++)
             {
-                var body = robot.jointArticulationBodies[i];
-                float position = GetJointPosition(body);
-                jointPositions.Add(position);
+                jointPositions[i] = GetJointPosition(metadata.Bodies[i]);
             }
 
-            return (robot.jointNames.ToArray(), jointPositions.ToArray());
+            return ((string[])metadata.Names.Clone(), jointPositions);
         }
 
         public async UniTask<bool> StopMotion()
         {
-            (string[] _, double[] jointPositions) = GetJointPositions();
-            jointPositions.CopyTo(jointTargets, 0);
+            RobotJointContract.Metadata metadata = CaptureCurrentMetadata();
+            var stoppedTargets = new float[metadata.Count];
+            for (int i = 0; i < metadata.Count; i++)
+            {
+                float position = GetJointPosition(metadata.Bodies[i]);
+                if (!RobotJointContract.IsFinite(position))
+                {
+                    throw new ArgumentException(
+                        $"Current joint position for '{metadata.Names[i]}' must be finite.",
+                        nameof(robot));
+                }
+
+                stoppedTargets[i] = position;
+            }
+
+            RobotJointContract.Metadata currentMetadata;
+            try
+            {
+                currentMetadata = RobotJointContract.Capture(robot, nameof(robot));
+            }
+            catch
+            {
+                targetMetadataBinding = null;
+                throw;
+            }
+
+            if (!RobotJointContract.MetadataMatches(metadata, currentMetadata))
+            {
+                targetMetadataBinding = null;
+                throw new InvalidOperationException(
+                    "Robot joint metadata changed while stopping motion.");
+            }
+
+            PublishTargets(metadata, stoppedTargets);
 
             // TODO: Maybe check velocities here?
             await UniTask.WaitForFixedUpdate();
@@ -102,11 +177,7 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
         {
             try
             {
-                for (int i = 0; i < robot.JointsCount; i++)
-                for (int j = 0; j < jointNames.Length; j++)
-                {
-                    if (robot.jointNames[i] == jointNames[j]) { jointTargets[i] = (float)positions[j]; }
-                }
+                SetJointTargets(jointNames, positions);
 
                 // TODO: await until we reach the target?
                 // TODO: create cancellation token each time we start a new motion to cancel the previous one? (otherwise loops will pile up)
@@ -133,19 +204,120 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
             }
             catch (Exception e)
             {
-                Debug.LogError("Caught exception when trying to move the robot.", this);
-                Debug.LogException(e);
+                Debug.LogError($"Caught exception when trying to move the robot: {e.Message}", this);
                 return false;
             }
 
             return true;
         }
 
+        /// <summary>
+        /// Validates and synchronously updates all robot joint targets by exact joint name.
+        /// </summary>
+        public void SetJointTargets(string[] jointNames, double[] positions)
+        {
+            RobotJointContract.Metadata metadata = CaptureCurrentMetadata();
+            SetJointTargetsAgainstMetadata(metadata, jointNames, positions);
+        }
+
+        internal void SetJointTargets(
+            RobotJointContract.Metadata expectedMetadata,
+            string[] jointNames,
+            double[] positions)
+        {
+            RobotJointContract.Metadata metadata = CaptureCurrentMetadata();
+            if (!RobotJointContract.MetadataMatches(expectedMetadata, metadata))
+            {
+                throw new InvalidOperationException(
+                    "Robot joint metadata changed after the mirrored state was accepted.");
+            }
+
+            SetJointTargetsAgainstMetadata(metadata, jointNames, positions);
+        }
+
+        private void SetJointTargetsAgainstMetadata(
+            RobotJointContract.Metadata metadata,
+            string[] jointNames,
+            double[] positions)
+        {
+            RobotJointContract.NamedVector vector = RobotJointContract.CaptureNamedVector(
+                metadata,
+                jointNames,
+                positions,
+                false,
+                false,
+                nameof(jointNames),
+                nameof(positions),
+                "target position");
+            var admittedValues = new float[vector.Values.Length];
+            for (int i = 0; i < admittedValues.Length; i++)
+            {
+                admittedValues[i] = RobotJointContract.ToFiniteFloat(
+                    vector.Values[i],
+                    nameof(positions),
+                    jointNames[i]);
+            }
+
+            float[] newTargets;
+            if (vector.IsComplete)
+            {
+                newTargets = new float[metadata.Count];
+            }
+            else
+            {
+                if (!RobotJointContract.MetadataMatches(targetMetadataBinding, metadata))
+                {
+                    targetMetadataBinding = null;
+                    throw new ArgumentException(
+                        "Partial joint target updates require an exact admitted robot metadata binding.",
+                        nameof(jointTargets));
+                }
+
+                if (jointTargets == null || jointTargets.Length != metadata.Count)
+                {
+                    throw new ArgumentException(
+                        "Partial joint target updates require a baseline with exactly one target per robot joint.",
+                        nameof(jointTargets));
+                }
+
+                for (int i = 0; i < jointTargets.Length; i++)
+                {
+                    if (!RobotJointContract.IsFinite(jointTargets[i]))
+                    {
+                        throw new ArgumentException(
+                            $"Partial joint target baseline contains a non-finite value for '{metadata.Names[i]}'.",
+                            nameof(jointTargets));
+                    }
+                }
+
+                newTargets = (float[])jointTargets.Clone();
+            }
+
+            for (int i = 0; i < admittedValues.Length; i++)
+            {
+                newTargets[vector.RobotIndices[i]] = admittedValues[i];
+            }
+
+            if (vector.IsComplete)
+            {
+                PublishTargets(metadata, newTargets);
+            }
+            else
+            {
+                jointTargets = newTargets;
+            }
+        }
+
         #endregion
 
         #region Internal Methods
 
-        private void InitializeJoints() { jointTargets = new float[robot.JointsCount]; }
+        private void InitializeJoints()
+        {
+            targetMetadataBinding = null;
+            RobotJointContract.Metadata metadata = RobotJointContract.Capture(robot, nameof(robot));
+            PublishTargets(metadata, new float[metadata.Count]);
+        }
 
         /// <summary>
         /// Calculates robot's joint position based on it's ArticulationBody.
@@ -192,25 +364,209 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
             return 0f;
         }
 
-        private void UpdateArticulationBodiesKinematic()
+        private KinematicUpdateSnapshot CaptureKinematicUpdate()
         {
-            // Disable robot's articulation bodies to prevent physical motion
-            foreach (var body in robot.articulationBodies) { body.enabled = false; }
-
-            // Move the robot joints' bodies to the target positions
-            for (int i = 0; i < robot.JointsCount; i++)
+            RobotJointContract.Metadata metadata = CaptureCurrentMetadata();
+            float[] targets = CapturePublicTargets(metadata);
+            if (robot.articulationBodies == null)
             {
-                var body = robot.jointArticulationBodies[i];
-                var jointTarget = jointTargets[i];
-                var parentBody = body.transform.parent.GetComponentInParent<ArticulationBody>(true);
+                throw new ArgumentException("Robot articulation bodies collection cannot be null.", nameof(robot));
+            }
+
+            var allBodies = new ArticulationBody[robot.articulationBodies.Count];
+            for (int i = 0; i < allBodies.Length; i++)
+            {
+                allBodies[i] = robot.articulationBodies[i];
+            }
+
+            ValidateUnityIdentitySet(allBodies, "Robot articulation bodies");
+            ArticulationBody[] hierarchyBodies = robot.GetComponentsInChildren<ArticulationBody>();
+            ValidateUnityIdentitySet(hierarchyBodies, "Current robot hierarchy articulation bodies");
+
+            var jointBodies = (ArticulationBody[])metadata.Bodies.Clone();
+            var parentBodies = new ArticulationBody[metadata.Count];
+            for (int i = 0; i < metadata.Count; i++)
+            {
+                if (!ContainsUnityIdentity(allBodies, jointBodies[i]))
+                {
+                    throw new ArgumentException(
+                        $"'{metadata.Names[i]}' joint's articulation body must be present in the robot articulation bodies collection.",
+                        nameof(robot));
+                }
+
+                if (jointBodies[i].jointType != ArticulationJointType.RevoluteJoint)
+                {
+                    throw new NotImplementedException(
+                        $"Kinematic motion control for {jointBodies[i].jointType} is not yet implemented.");
+                }
+
+                Transform parentTransform = jointBodies[i].transform.parent;
+                ArticulationBody parentBody = null;
+                while (parentTransform != null && parentBody == null)
+                {
+                    parentBody = parentTransform.GetComponent<ArticulationBody>();
+                    parentTransform = parentTransform.parent;
+                }
 
                 if (parentBody == null)
                 {
-                    Debug.LogError($"'{body}' joint's articulation body is the root of articulation. This is not allowed for robot joints, as they have to be movable.\n" +
-                                   $"Please make sure that robot has a base articulation body which is not a joint. ", this);
-                    this.enabled = false;
-                    break;
+                    throw new ArgumentException(
+                        $"'{metadata.Names[i]}' joint's articulation body must have a parent articulation body.",
+                        nameof(robot));
                 }
+
+                if (!ContainsUnityIdentity(allBodies, parentBody))
+                {
+                    throw new ArgumentException(
+                        $"'{metadata.Names[i]}' joint's parent articulation body must be present in the robot articulation bodies collection.",
+                        nameof(robot));
+                }
+
+                parentBodies[i] = parentBody;
+            }
+
+            if (allBodies.Length != hierarchyBodies.Length)
+            {
+                throw new ArgumentException(
+                    "Robot articulation bodies count must match the current active robot hierarchy.",
+                    nameof(robot));
+            }
+
+            for (int i = 0; i < allBodies.Length; i++)
+            {
+                if (!ContainsUnityIdentity(hierarchyBodies, allBodies[i]))
+                {
+                    throw new ArgumentException(
+                        "Robot articulation bodies cannot contain a body outside the current active robot hierarchy.",
+                        nameof(robot));
+                }
+            }
+
+            for (int i = 0; i < hierarchyBodies.Length; i++)
+            {
+                if (!ContainsUnityIdentity(allBodies, hierarchyBodies[i]))
+                {
+                    throw new ArgumentException(
+                        "Robot articulation bodies must contain every body in the current active robot hierarchy.",
+                        nameof(robot));
+                }
+            }
+
+            return new KinematicUpdateSnapshot(allBodies, jointBodies, parentBodies, targets);
+        }
+
+        private static void ValidateUnityIdentitySet(ArticulationBody[] bodies, string collectionName)
+        {
+            for (int i = 0; i < bodies.Length; i++)
+            {
+                if (bodies[i] == null)
+                {
+                    throw new ArgumentException(
+                        $"{collectionName} cannot contain null or destroyed entries.",
+                        nameof(robot));
+                }
+
+                for (int previous = 0; previous < i; previous++)
+                {
+                    if (bodies[previous] == bodies[i])
+                    {
+                        throw new ArgumentException(
+                            $"{collectionName} cannot contain duplicate identities.",
+                            nameof(robot));
+                    }
+                }
+            }
+        }
+
+        private static bool ContainsUnityIdentity(ArticulationBody[] bodies, ArticulationBody requiredBody)
+        {
+            for (int i = 0; i < bodies.Length; i++)
+            {
+                if (bodies[i] == requiredBody) { return true; }
+            }
+
+            return false;
+        }
+
+        private PhysicalUpdateSnapshot CapturePhysicalUpdate()
+        {
+            RobotJointContract.Metadata metadata = CaptureCurrentMetadata();
+            return new PhysicalUpdateSnapshot(metadata.Bodies, CapturePublicTargets(metadata));
+        }
+
+        private float[] CapturePublicTargets(RobotJointContract.Metadata metadata)
+        {
+            if (!RobotJointContract.MetadataMatches(targetMetadataBinding, metadata))
+            {
+                targetMetadataBinding = null;
+                throw new ArgumentException(
+                    "Public joint targets do not have an exact admitted robot metadata binding.",
+                    nameof(jointTargets));
+            }
+
+            if (jointTargets == null || jointTargets.Length != metadata.Count)
+            {
+                throw new ArgumentException(
+                    "Public joint targets must contain exactly one value per robot joint.",
+                    nameof(jointTargets));
+            }
+
+            var targets = new float[jointTargets.Length];
+            for (int i = 0; i < targets.Length; i++)
+            {
+                float target = jointTargets[i];
+                if (!RobotJointContract.IsFinite(target))
+                {
+                    throw new ArgumentException(
+                        $"Public joint target for '{metadata.Names[i]}' must be finite.",
+                        nameof(jointTargets));
+                }
+
+                targets[i] = target;
+            }
+
+            return targets;
+        }
+
+        private RobotJointContract.Metadata CaptureCurrentMetadata()
+        {
+            RobotJointContract.Metadata metadata;
+            try
+            {
+                metadata = RobotJointContract.Capture(robot, nameof(robot));
+            }
+            catch
+            {
+                targetMetadataBinding = null;
+                throw;
+            }
+
+            if (targetMetadataBinding != null && !RobotJointContract.MetadataMatches(targetMetadataBinding, metadata))
+            {
+                targetMetadataBinding = null;
+            }
+
+            return metadata;
+        }
+
+
+        private void PublishTargets(RobotJointContract.Metadata metadata, float[] targets)
+        {
+            targetMetadataBinding = metadata;
+            jointTargets = targets;
+        }
+
+        private void UpdateArticulationBodiesKinematic(KinematicUpdateSnapshot snapshot)
+        {
+            // Disable robot's articulation bodies to prevent physical motion
+            foreach (ArticulationBody body in snapshot.AllBodies) { body.enabled = false; }
+
+            // Move the robot joints' bodies to the target positions
+            for (int i = 0; i < snapshot.JointBodies.Length; i++)
+            {
+                ArticulationBody body = snapshot.JointBodies[i];
+                float jointTarget = snapshot.Targets[i];
+                ArticulationBody parentBody = snapshot.ParentBodies[i];
 
                 switch (body.jointType)
                 {
@@ -240,18 +596,18 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
             }
         }
 
-        private void UpdateArticulationBodiesPhysical()
+        private void UpdateArticulationBodiesPhysical(PhysicalUpdateSnapshot snapshot)
         {
-            for (int i = 0; i < robot.JointsCount; i++)
+            for (int i = 0; i < snapshot.JointBodies.Length; i++)
             {
-                var jointBody = robot.jointArticulationBodies[i];
+                ArticulationBody jointBody = snapshot.JointBodies[i];
                 jointBody.enabled = true;
 
                 var drive = jointBody.xDrive;
                 drive.forceLimit = forceLimit;
                 drive.stiffness = stiffness;
                 drive.damping = damping;
-                drive.target = jointTargets[i];
+                drive.target = snapshot.Targets[i];
                 jointBody.xDrive = drive;
 
                 jointBody.jointFriction = jointFriction;
