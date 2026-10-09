@@ -158,7 +158,7 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
                 throw;
             }
 
-            if (!MetadataMatches(metadata, currentMetadata))
+            if (!RobotJointContract.MetadataMatches(metadata, currentMetadata))
             {
                 targetMetadataBinding = null;
                 throw new InvalidOperationException(
@@ -217,6 +217,29 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
         public void SetJointTargets(string[] jointNames, double[] positions)
         {
             RobotJointContract.Metadata metadata = CaptureCurrentMetadata();
+            SetJointTargetsAgainstMetadata(metadata, jointNames, positions);
+        }
+
+        internal void SetJointTargets(
+            RobotJointContract.Metadata expectedMetadata,
+            string[] jointNames,
+            double[] positions)
+        {
+            RobotJointContract.Metadata metadata = CaptureCurrentMetadata();
+            if (!RobotJointContract.MetadataMatches(expectedMetadata, metadata))
+            {
+                throw new InvalidOperationException(
+                    "Robot joint metadata changed after the mirrored state was accepted.");
+            }
+
+            SetJointTargetsAgainstMetadata(metadata, jointNames, positions);
+        }
+
+        private void SetJointTargetsAgainstMetadata(
+            RobotJointContract.Metadata metadata,
+            string[] jointNames,
+            double[] positions)
+        {
             RobotJointContract.NamedVector vector = RobotJointContract.CaptureNamedVector(
                 metadata,
                 jointNames,
@@ -242,7 +265,7 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
             }
             else
             {
-                if (!MetadataMatches(targetMetadataBinding, metadata))
+                if (!RobotJointContract.MetadataMatches(targetMetadataBinding, metadata))
                 {
                     targetMetadataBinding = null;
                     throw new ArgumentException(
@@ -473,7 +496,7 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
 
         private float[] CapturePublicTargets(RobotJointContract.Metadata metadata)
         {
-            if (!MetadataMatches(targetMetadataBinding, metadata))
+            if (!RobotJointContract.MetadataMatches(targetMetadataBinding, metadata))
             {
                 targetMetadataBinding = null;
                 throw new ArgumentException(
@@ -518,7 +541,7 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
                 throw;
             }
 
-            if (targetMetadataBinding != null && !MetadataMatches(targetMetadataBinding, metadata))
+            if (targetMetadataBinding != null && !RobotJointContract.MetadataMatches(targetMetadataBinding, metadata))
             {
                 targetMetadataBinding = null;
             }
@@ -526,23 +549,6 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
             return metadata;
         }
 
-        private static bool MetadataMatches(
-            RobotJointContract.Metadata binding,
-            RobotJointContract.Metadata metadata)
-        {
-            if (binding == null || metadata == null || binding.Count != metadata.Count) { return false; }
-
-            for (int i = 0; i < binding.Count; i++)
-            {
-                if (!string.Equals(binding.Names[i], metadata.Names[i], StringComparison.Ordinal)) { return false; }
-                if (binding.Bodies[i] == null || metadata.Bodies[i] == null || binding.Bodies[i] != metadata.Bodies[i])
-                {
-                    return false;
-                }
-            }
-
-            return true;
-        }
 
         private void PublishTargets(RobotJointContract.Metadata metadata, float[] targets)
         {

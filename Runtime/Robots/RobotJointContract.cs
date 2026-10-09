@@ -9,17 +9,23 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
         internal sealed class Metadata
         {
             internal Metadata(
+                UrdfRobotKinematicsDataProvider provider,
                 string[] names,
                 ArticulationBody[] bodies,
+                ArticulationJointType[] jointTypes,
                 Dictionary<string, int> indicesByName)
             {
+                Provider = provider;
                 Names = names;
                 Bodies = bodies;
+                JointTypes = jointTypes;
                 IndicesByName = indicesByName;
             }
 
+            internal UrdfRobotKinematicsDataProvider Provider { get; }
             internal string[] Names { get; }
             internal ArticulationBody[] Bodies { get; }
+            internal ArticulationJointType[] JointTypes { get; }
             internal Dictionary<string, int> IndicesByName { get; }
             internal int Count => Names.Length;
         }
@@ -62,6 +68,7 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
 
             var names = new string[provider.jointNames.Count];
             var bodies = new ArticulationBody[provider.jointArticulationBodies.Count];
+            var jointTypes = new ArticulationJointType[provider.jointArticulationBodies.Count];
             var indicesByName = new Dictionary<string, int>(names.Length, StringComparer.Ordinal);
             for (int i = 0; i < names.Length; i++)
             {
@@ -96,9 +103,36 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
 
                 names[i] = name;
                 bodies[i] = body;
+                jointTypes[i] = body.jointType;
             }
 
-            return new Metadata(names, bodies, indicesByName);
+            return new Metadata(provider, names, bodies, jointTypes, indicesByName);
+        }
+
+        internal static bool MetadataMatches(Metadata binding, Metadata metadata)
+        {
+            if (binding == null
+                || metadata == null
+                || !ReferenceEquals(binding.Provider, metadata.Provider)
+                || binding.Count != metadata.Count)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < binding.Count; i++)
+            {
+                if (!string.Equals(binding.Names[i], metadata.Names[i], StringComparison.Ordinal)) { return false; }
+                if (binding.Bodies[i] == null
+                    || metadata.Bodies[i] == null
+                    || !ReferenceEquals(binding.Bodies[i], metadata.Bodies[i]))
+                {
+                    return false;
+                }
+
+                if (binding.JointTypes[i] != metadata.JointTypes[i]) { return false; }
+            }
+
+            return true;
         }
 
         internal static NamedVector CaptureNamedVector(

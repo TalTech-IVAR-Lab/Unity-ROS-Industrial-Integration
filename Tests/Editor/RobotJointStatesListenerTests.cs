@@ -34,12 +34,26 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial.Tests
         }
 
         [Test]
-        public void AcceptedReorderedState_UpdatesPublicStateAndMotionControllerTargetsByName()
+        public void Listener_DoesNotOwnMotionController()
+        {
+            Assert.That(typeof(RobotJointStatesListener).GetField("motionController"), Is.Null);
+        }
+
+        [Test]
+        public void RobotJointStateMirrorTypeExists()
+        {
+            Assert.That(
+                typeof(RobotJointStatesListener).Assembly.GetType(
+                    "EE.TalTech.IVAR.Robotics.ROSIndustrial.RobotJointStateMirror"),
+                Is.Not.Null);
+        }
+
+        [Test]
+        public void AcceptedReorderedState_UpdatesPublicStateByName()
         {
             RobotJointStatesListener listener = CreateListener(
                 new[] { "joint_1", "joint_2" },
-                new[] { ArticulationJointType.RevoluteJoint, ArticulationJointType.PrismaticJoint },
-                out UrdfRobotMotionController controller);
+                new[] { ArticulationJointType.RevoluteJoint, ArticulationJointType.PrismaticJoint });
             var message = new JointStateMsg
             {
                 name = new[] { "joint_2", "extra_joint", "joint_1" },
@@ -55,33 +69,6 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial.Tests
             Assert.That(listener.unityJointPositions, Is.EqualTo(new[] { 90d, 0.25d }).Within(0.000001d));
             Assert.That(listener.jointVelocities, Is.EqualTo(new[] { 1d, 2d }));
             Assert.That(listener.jointEfforts, Is.EqualTo(new[] { 3d, 4d }));
-            Assert.That(controller.jointTargets, Is.EqualTo(new[] { 90f, 0.25f }).Within(0.000001f));
-        }
-
-        [Test]
-        public void AcceptedStateWithoutMotionController_StillUpdatesPublicState()
-        {
-            RobotJointStatesListener listener = CreateListener(
-                new[] { "joint_1", "joint_2" },
-                new[] { ArticulationJointType.RevoluteJoint, ArticulationJointType.PrismaticJoint },
-                out UrdfRobotMotionController controller);
-            listener.motionController = null;
-            var message = new JointStateMsg
-            {
-                name = new[] { "joint_2", "joint_1" },
-                position = new[] { 0.25d, System.Math.PI / 2d },
-                velocity = new[] { 2d, 1d },
-                effort = new[] { 4d, 3d }
-            };
-
-            InvokeUpdate(listener, message);
-
-            Assert.That(listener.jointNames, Is.EqualTo(new[] { "joint_1", "joint_2" }));
-            Assert.That(listener.rosJointPositions, Is.EqualTo(new[] { System.Math.PI / 2d, 0.25d }));
-            Assert.That(listener.unityJointPositions, Is.EqualTo(new[] { 90d, 0.25d }).Within(0.000001d));
-            Assert.That(listener.jointVelocities, Is.EqualTo(new[] { 1d, 2d }));
-            Assert.That(listener.jointEfforts, Is.EqualTo(new[] { 3d, 4d }));
-            Assert.That(controller.jointTargets, Is.EqualTo(new[] { 0f, 0f }));
         }
 
         [Test]
@@ -89,8 +76,7 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial.Tests
         {
             RobotJointStatesListener listener = CreateListener(
                 new[] { "joint_1", "joint_2" },
-                new[] { ArticulationJointType.RevoluteJoint, ArticulationJointType.PrismaticJoint },
-                out UrdfRobotMotionController controller);
+                new[] { ArticulationJointType.RevoluteJoint, ArticulationJointType.PrismaticJoint });
             var message = new JointStateMsg
             {
                 name = new[] { "joint_2", "joint_1" },
@@ -103,17 +89,14 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial.Tests
 
             Assert.That(listener.jointVelocities, Is.Empty);
             Assert.That(listener.jointEfforts, Is.Empty);
-            Assert.That(controller.jointTargets, Is.EqualTo(new[] { 90f, 0.25f }).Within(0.000001f));
         }
 
         [Test]
-        public void WithoutController_ConversionOverflow_IsRejectedAtomically()
+        public void ConversionOverflow_IsRejectedAtomically()
         {
             RobotJointStatesListener listener = CreateListener(
                 new[] { "joint_1" },
-                new[] { ArticulationJointType.RevoluteJoint },
-                out UrdfRobotMotionController controller);
-            listener.motionController = null;
+                new[] { ArticulationJointType.RevoluteJoint });
             LogAssert.Expect(LogType.Warning, new Regex("^Rejected JointState message"));
 
             InvokeUpdate(listener, new JointStateMsg
@@ -127,42 +110,14 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial.Tests
             Assert.That(listener.jointNames, Is.Empty);
             Assert.That(listener.rosJointPositions, Is.Empty);
             Assert.That(listener.unityJointPositions, Is.Empty);
-            Assert.That(controller.jointTargets, Is.EqualTo(new[] { 0f }));
         }
 
         [Test]
-        public void WithController_FloatUnrepresentableConvertedTarget_IsRejectedAtomically()
+        public void LargeFiniteConvertedDouble_IsAcceptedWithoutFloatNarrowing()
         {
             RobotJointStatesListener listener = CreateListener(
                 new[] { "joint_1" },
-                new[] { ArticulationJointType.RevoluteJoint },
-                out UrdfRobotMotionController controller);
-            float[] originalTargets = controller.jointTargets;
-            LogAssert.Expect(LogType.Warning, new Regex("^Rejected JointState message"));
-
-            InvokeUpdate(listener, new JointStateMsg
-            {
-                name = new[] { "joint_1" },
-                position = new[] { 1e38d },
-                velocity = System.Array.Empty<double>(),
-                effort = System.Array.Empty<double>()
-            });
-
-            Assert.That(listener.jointNames, Is.Empty);
-            Assert.That(listener.rosJointPositions, Is.Empty);
-            Assert.That(listener.unityJointPositions, Is.Empty);
-            Assert.That(controller.jointTargets, Is.SameAs(originalTargets));
-            Assert.That(controller.jointTargets, Is.EqualTo(new[] { 0f }));
-        }
-
-        [Test]
-        public void WithoutController_LargeFiniteConvertedDouble_IsAccepted()
-        {
-            RobotJointStatesListener listener = CreateListener(
-                new[] { "joint_1" },
-                new[] { ArticulationJointType.RevoluteJoint },
-                out UrdfRobotMotionController controller);
-            listener.motionController = null;
+                new[] { ArticulationJointType.RevoluteJoint });
 
             InvokeUpdate(listener, new JointStateMsg
             {
@@ -176,42 +131,6 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial.Tests
             Assert.That(listener.rosJointPositions, Is.EqualTo(new[] { 1e38d }));
             Assert.That(listener.unityJointPositions[0], Is.GreaterThan((double)float.MaxValue));
             Assert.That(double.IsInfinity(listener.unityJointPositions[0]), Is.False);
-            Assert.That(controller.jointTargets, Is.EqualTo(new[] { 0f }));
-        }
-
-        [Test]
-        public void ControllerForDifferentRobot_IsRejectedAtomically()
-        {
-            RobotJointStatesListener listener = CreateListener(
-                new[] { "joint_1" },
-                new[] { ArticulationJointType.RevoluteJoint },
-                out UrdfRobotMotionController controller);
-            var otherObject = new GameObject("other robot");
-            otherObject.SetActive(false);
-            gameObjects.Add(otherObject);
-            otherObject.AddComponent<UrdfRobot>();
-            var otherRobot = otherObject.AddComponent<UrdfRobotKinematicsDataProvider>();
-            otherRobot.jointNames = new List<string> { "joint_1" };
-            otherRobot.jointArticulationBodies = new List<ArticulationBody>
-            {
-                listener.unityRobot.jointArticulationBodies[0]
-            };
-            controller.robot = otherRobot;
-            float[] originalTargets = controller.jointTargets;
-            LogAssert.Expect(LogType.Warning, new Regex("^Rejected JointState message"));
-
-            InvokeUpdate(listener, new JointStateMsg
-            {
-                name = new[] { "joint_1" },
-                position = new[] { 0.5d },
-                velocity = System.Array.Empty<double>(),
-                effort = System.Array.Empty<double>()
-            });
-
-            Assert.That(listener.jointNames, Is.Empty);
-            Assert.That(listener.rosJointPositions, Is.Empty);
-            Assert.That(listener.unityJointPositions, Is.Empty);
-            Assert.That(controller.jointTargets, Is.SameAs(originalTargets));
         }
 
         [Test]
@@ -219,9 +138,7 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial.Tests
         {
             RobotJointStatesListener listener = CreateListener(
                 new[] { "joint_1", "joint_2" },
-                new[] { ArticulationJointType.RevoluteJoint, ArticulationJointType.RevoluteJoint },
-                out UrdfRobotMotionController _);
-            listener.motionController = null;
+                new[] { ArticulationJointType.RevoluteJoint, ArticulationJointType.RevoluteJoint });
             UrdfRobotKinematicsDataProvider robot = listener.unityRobot;
             List<string> names = robot.jointNames;
             List<ArticulationBody> bodies = robot.jointArticulationBodies;
@@ -270,11 +187,9 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial.Tests
         {
             RobotJointStatesListener listener = CreateListener(
                 new[] { "joint_1", "joint_2" },
-                new[] { ArticulationJointType.RevoluteJoint, ArticulationJointType.RevoluteJoint },
-                out UrdfRobotMotionController controller);
+                new[] { ArticulationJointType.RevoluteJoint, ArticulationJointType.RevoluteJoint });
             ArticulationBody originalSecondBody = listener.unityRobot.jointArticulationBodies[1];
             listener.unityRobot.jointArticulationBodies[1] = listener.unityRobot.jointArticulationBodies[0];
-            float[] originalTargets = controller.jointTargets;
             LogAssert.Expect(LogType.Warning, new Regex("^Rejected JointState message"));
 
             InvokeUpdate(listener, new JointStateMsg
@@ -288,7 +203,6 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial.Tests
             Assert.That(listener.jointNames, Is.Empty);
             Assert.That(listener.rosJointPositions, Is.Empty);
             Assert.That(listener.unityJointPositions, Is.Empty);
-            Assert.That(controller.jointTargets, Is.SameAs(originalTargets));
             Assert.That(originalSecondBody, Is.Not.Null);
         }
 
@@ -311,8 +225,7 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial.Tests
         {
             RobotJointStatesListener listener = CreateListener(
                 new[] { "joint_1", "joint_2" },
-                new[] { ArticulationJointType.RevoluteJoint, ArticulationJointType.PrismaticJoint },
-                out UrdfRobotMotionController controller);
+                new[] { ArticulationJointType.RevoluteJoint, ArticulationJointType.PrismaticJoint });
             var validMessage = new JointStateMsg
             {
                 name = new[] { "joint_1", "joint_2" },
@@ -327,7 +240,6 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial.Tests
             double[] acceptedUnityPositions = (double[])listener.unityJointPositions.Clone();
             double[] acceptedVelocities = (double[])listener.jointVelocities.Clone();
             double[] acceptedEfforts = (double[])listener.jointEfforts.Clone();
-            float[] acceptedTargets = (float[])controller.jointTargets.Clone();
 
             JointStateMsg malformedMessage = CreateMalformedMessage(malformedField);
             LogAssert.Expect(LogType.Warning, new Regex("^Rejected JointState message"));
@@ -338,7 +250,6 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial.Tests
             Assert.That(listener.unityJointPositions, Is.EqualTo(acceptedUnityPositions));
             Assert.That(listener.jointVelocities, Is.EqualTo(acceptedVelocities));
             Assert.That(listener.jointEfforts, Is.EqualTo(acceptedEfforts));
-            Assert.That(controller.jointTargets, Is.EqualTo(acceptedTargets));
         }
 
         [Test]
@@ -346,8 +257,7 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial.Tests
         {
             RobotJointStatesListener listener = CreateListener(
                 new[] { "joint_1" },
-                new[] { ArticulationJointType.RevoluteJoint },
-                out UrdfRobotMotionController controller);
+                new[] { ArticulationJointType.RevoluteJoint });
             ROSConnection connection = SubscribeListener(listener);
             listener.gameObject.SetActive(true);
 
@@ -360,7 +270,6 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial.Tests
             });
 
             Assert.That(listener.rosJointPositions, Is.EqualTo(new[] { System.Math.PI / 2d }));
-            Assert.That(controller.jointTargets, Is.EqualTo(new[] { 90f }).Within(0.000001f));
         }
 
         [Test]
@@ -368,8 +277,7 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial.Tests
         {
             RobotJointStatesListener listener = CreateListener(
                 new[] { "joint_1" },
-                new[] { ArticulationJointType.RevoluteJoint },
-                out UrdfRobotMotionController controller);
+                new[] { ArticulationJointType.RevoluteJoint });
             ROSConnection connection = SubscribeListener(listener);
             listener.enabled = false;
 
@@ -384,7 +292,6 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial.Tests
             Assert.That(listener.jointNames, Is.Empty);
             Assert.That(listener.rosJointPositions, Is.Empty);
             Assert.That(listener.unityJointPositions, Is.Empty);
-            Assert.That(controller.jointTargets, Is.EqualTo(new[] { 0f }));
         }
 
         [Test]
@@ -392,21 +299,18 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial.Tests
         {
             RobotJointStatesListener listener = CreateListener(
                 new[] { "joint_1" },
-                new[] { ArticulationJointType.RevoluteJoint },
-                out UrdfRobotMotionController controller);
+                new[] { ArticulationJointType.RevoluteJoint });
             ROSConnection connection = SubscribeListener(listener);
             listener.gameObject.SetActive(true);
             Object.DestroyImmediate(listener);
 
-            DeliverSubscribedMessage(connection, "joint_states", new JointStateMsg
+            Assert.DoesNotThrow(() => DeliverSubscribedMessage(connection, "joint_states", new JointStateMsg
             {
                 name = new[] { "joint_1" },
                 position = new[] { System.Math.PI / 2d },
                 velocity = System.Array.Empty<double>(),
                 effort = System.Array.Empty<double>()
-            });
-
-            Assert.That(controller.jointTargets, Is.EqualTo(new[] { 0f }));
+            }));
         }
 
         [Test]
@@ -414,8 +318,7 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial.Tests
         {
             RobotJointStatesListener listener = CreateListener(
                 new[] { "joint_1" },
-                new[] { ArticulationJointType.RevoluteJoint },
-                out UrdfRobotMotionController _);
+                new[] { ArticulationJointType.RevoluteJoint });
             ROSConnection connection = SubscribeListener(listener);
 
             System.Delegate callback = GetSubscribedCallback(connection, listener.jointStatesTopic);
@@ -507,8 +410,7 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial.Tests
 
         private RobotJointStatesListener CreateListener(
             string[] names,
-            ArticulationJointType[] jointTypes,
-            out UrdfRobotMotionController controller)
+            ArticulationJointType[] jointTypes)
         {
             var robotObject = new GameObject("robot");
             robotObject.SetActive(false);
@@ -527,15 +429,8 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial.Tests
                 robot.jointArticulationBodies.Add(body);
             }
 
-            controller = robotObject.AddComponent<UrdfRobotMotionController>();
-            controller.robot = robot;
-            controller.jointTargets = new float[names.Length];
-
             var listener = robotObject.AddComponent<RobotJointStatesListener>();
             listener.unityRobot = robot;
-            FieldInfo controllerField = typeof(RobotJointStatesListener).GetField("motionController");
-            Assert.That(controllerField, Is.Not.Null, "The listener must expose its target motion controller.");
-            controllerField.SetValue(listener, controller);
             return listener;
         }
 

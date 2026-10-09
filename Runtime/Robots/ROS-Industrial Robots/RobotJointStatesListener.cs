@@ -17,10 +17,6 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
         /// </summary>
         public UrdfRobotKinematicsDataProvider unityRobot;
 
-        /// <summary>
-        /// Motion controller that applies accepted mirror targets to the virtual robot.
-        /// </summary>
-        public UrdfRobotMotionController motionController;
 
         /// <summary>
         /// ROS topic of the joint states.
@@ -58,6 +54,14 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
         [Restricted(RestrictedAttribute.Restrictions.ReadOnlyAlways)]
         public double[] jointEfforts = Array.Empty<double>();
 
+        private double[] acceptedUnityJointPositions = Array.Empty<double>();
+
+        private RobotJointContract.Metadata acceptedMetadata;
+
+        private bool acceptedStateIsValid;
+
+        private ulong acceptedStateVersion;
+
         #endregion
 
         #region Unity Callbacks
@@ -87,11 +91,6 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
             try
             {
                 RobotJointContract.Metadata metadata = RobotJointContract.Capture(unityRobot, nameof(unityRobot));
-                if (motionController != null && !ReferenceEquals(motionController.robot, unityRobot))
-                {
-                    throw new ArgumentException("Motion controller must reference the listener's exact Unity robot provider.", nameof(motionController));
-                }
-
                 double[] newRosPositions = RobotJointPositionsConversionUtility.MapToRobotOrder(
                     metadata, msg.name, msg.position, "position");
                 double[] newUnityPositions = RobotJointPositionsConversionUtility.RosToUnity(
@@ -99,16 +98,20 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
                 double[] newVelocities = MapOptionalVector(metadata, msg.name, msg.velocity, "velocity");
                 double[] newEfforts = MapOptionalVector(metadata, msg.name, msg.effort, "effort");
 
-                if (motionController != null)
-                {
-                    motionController.SetJointTargets(metadata.Names, newUnityPositions);
-                }
-
-                jointNames = (string[])metadata.Names.Clone();
+                string[] newJointNames = (string[])metadata.Names.Clone();
+                jointNames = newJointNames;
                 rosJointPositions = newRosPositions;
                 unityJointPositions = newUnityPositions;
                 jointVelocities = newVelocities;
                 jointEfforts = newEfforts;
+                acceptedMetadata = metadata;
+                acceptedUnityJointPositions = (double[])newUnityPositions.Clone();
+                acceptedStateIsValid = true;
+                unchecked
+                {
+                    acceptedStateVersion++;
+                    if (acceptedStateVersion == 0) { acceptedStateVersion++; }
+                }
             }
             catch (Exception exception)
             {
@@ -124,6 +127,43 @@ namespace EE.TalTech.IVAR.Robotics.ROSIndustrial
         {
             if (values != null && values.Length == 0) { return Array.Empty<double>(); }
             return RobotJointPositionsConversionUtility.MapToRobotOrder(metadata, names, values, valueName);
+        }
+
+        /// <summary>
+        /// Captures an immutable copy of the most recent accepted joint-state target.
+        /// </summary>
+        internal bool TryCaptureLatestJointState(
+            ulong afterVersion,
+            out ulong version,
+            out RobotJointContract.Metadata metadata,
+            out string[] names,
+            out double[] positions)
+        {
+            version = acceptedStateVersion;
+            if (version == 0 || version == afterVersion || !acceptedStateIsValid)
+            {
+                metadata = null;
+                names = Array.Empty<string>();
+                positions = Array.Empty<double>();
+                return false;
+            }
+
+            metadata = acceptedMetadata;
+            names = (string[])acceptedMetadata.Names.Clone();
+            positions = (double[])acceptedUnityJointPositions.Clone();
+            return true;
+        }
+
+        /// <summary>
+        /// Permanently rejects an accepted snapshot if it is still the current version.
+        /// A newer validated JointState is required before mirroring can resume.
+        /// </summary>
+        internal void InvalidateAcceptedJointState(ulong version)
+        {
+            if (acceptedStateVersion != version) { return; }
+            acceptedStateIsValid = false;
+            acceptedMetadata = null;
+            acceptedUnityJointPositions = Array.Empty<double>();
         }
 
         #endregion
